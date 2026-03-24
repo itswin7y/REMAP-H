@@ -14,38 +14,32 @@ skin.Massless     = true
 skin.Transparency = 1
 skin.Parent       = workspace
 
-local ball         = nil
-local conn         = nil
-local _decal_conn  = nil
-local _trans_conn  = nil
-local _snap_trans  = nil
-local _snap_decals = {}
+local ball        = nil
+local conn        = nil
+local _decal_conn = nil
+local _trans_conn = nil
+local _snap_trans = nil
 
-local function snapshot(b)
-    _snap_trans  = b.Transparency
-    _snap_decals = {}
+local function get_decals(b)
+    local decals = {}
     for _, v in ipairs(b:GetChildren()) do
         if v:IsA("Decal") then
-            _snap_decals[#_snap_decals + 1] = {
-                Texture      = v.Texture,
-                Face         = v.Face,
-                Color3       = v.Color3,
-                Transparency = v.Transparency,
-            }
+            decals[#decals + 1] = v
         end
     end
+    return decals
 end
 
 local function hide(b)
     b.Transparency = 1
 
-    for _, v in ipairs(b:GetChildren()) do
-        if v:IsA("Decal") then v:Destroy() end
+    for _, v in ipairs(get_decals(b)) do
+        v.Transparency = 1
     end
 
     if _decal_conn then _decal_conn:Disconnect() end
     _decal_conn = b.ChildAdded:Connect(function(v)
-        if v:IsA("Decal") then v:Destroy() end
+        if v:IsA("Decal") then v.Transparency = 1 end
     end)
 
     if _trans_conn then _trans_conn:Disconnect() end
@@ -55,7 +49,7 @@ local function hide(b)
 end
 
 local function swap(b)
-    snapshot(b)
+    _snap_trans = b.Transparency
     ball = b
     hide(b)
 end
@@ -87,28 +81,21 @@ getgenv().BallSkin = {
 
     reset = function()
         if _decal_conn then _decal_conn:Disconnect(); _decal_conn = nil end
-        if _trans_conn  then _trans_conn:Disconnect();  _trans_conn  = nil end
-
-        if ball and ball.Parent then
-            ball.Transparency = _snap_trans or 0
-
-            for _, d in ipairs(_snap_decals) do
-                local dec          = Instance.new("Decal")
-                dec.Texture        = d.Texture
-                dec.Face           = d.Face
-                dec.Color3         = d.Color3
-                dec.Transparency   = d.Transparency
-                dec.Parent         = ball
-            end
-        end
+        if _trans_conn  then _trans_conn:Disconnect(); _trans_conn  = nil end
 
         skin.Transparency = 1
         skin.MeshId       = ""
         skin.TextureID    = ""
 
-        _snap_trans  = nil
-        _snap_decals = {}
-        ball         = nil
+        if ball and ball.Parent then
+            ball.Transparency = _snap_trans or 0
+            for _, v in ipairs(get_decals(ball)) do
+                v.Transparency = 0
+            end
+        end
+
+        _snap_trans = nil
+        ball        = nil
     end,
 
     destroy = function()
