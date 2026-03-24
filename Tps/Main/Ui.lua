@@ -403,7 +403,7 @@ local Window = Seraph:Window("REMAP-H") do
         local Saves = ConfigTab:AddCategory("Saves") do
             local Config = Saves:AddSubCategory("Config") do
                 local Main = Config:AddSection("Main") do
-                    Main:Textbox({Title = "Config Name", Placeholder = "meuconfig", Flag = "Config_TextBox"})
+                    Main:Textbox({Title = "Config Name", Placeholder = "menuconfig", Flag = "Config_TextBox"})
                     Main:Button({Title = "Save Config", Callback = function()
                         local name = Seraph.Flags.Config_TextBox:GetValue()
                         if not name or name == "" then return end
