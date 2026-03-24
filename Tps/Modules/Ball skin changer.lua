@@ -15,10 +15,10 @@ skin.Transparency = 1
 skin.Size         = Vector3.new(3, 3, 3)
 skin.Parent       = workspace
 
-local smesh       = Instance.new("SpecialMesh")
-smesh.MeshType    = Enum.MeshType.FileMesh
-smesh.Scale       = Vector3.new(1, 1, 1)
-smesh.Parent      = skin
+local smesh    = Instance.new("SpecialMesh")
+smesh.MeshType = Enum.MeshType.FileMesh
+smesh.Scale    = Vector3.new(1, 1, 1)
+smesh.Parent   = skin
 
 local ball        = nil
 local conn        = nil
@@ -26,10 +26,7 @@ local _active     = false
 local _decal_conn = nil
 local _trans_conn = nil
 
-local saved = {
-    transparency = nil,
-    decals       = {},
-}
+local saved = { transparency = nil, decals = {} }
 
 local function get_decals(b)
     local t = {}
@@ -46,27 +43,28 @@ local function disconnect_all()
 end
 
 local function save_state(b)
+    if not b or not b.Parent then return end
     saved.transparency = b.Transparency
-    saved.decals       = {}
+    saved.decals = {}
     for _, v in ipairs(get_decals(b)) do
-        saved.decals[v] = v.Transparency
+        saved.decals[v.Name] = v.Transparency
     end
 end
 
 local function hide(b)
     if not b or not b.Parent then return end
 
-    b.Transparency = 1
-    for _, v in ipairs(get_decals(b)) do
-        v.Transparency = 1
-    end
-
     disconnect_all()
+
+    b.Transparency = 1
+    for _, v in ipairs(get_decals(b)) do v.Transparency = 1 end
 
     _decal_conn = b.ChildAdded:Connect(function(v)
         if not b.Parent then disconnect_all() return end
         if v:IsA("Decal") then
-            saved.decals[v] = v.Transparency
+            if saved.decals[v.Name] == nil then
+                saved.decals[v.Name] = v.Transparency
+            end
             v.Transparency = 1
         end
     end)
@@ -78,12 +76,9 @@ local function hide(b)
 end
 
 local function swap(b)
+    disconnect_all()
     ball = b
-
-    if _active then
-        save_state(b)
-        hide(b)
-    end
+    if _active then hide(b) end
 end
 
 local existing = sys:FindFirstChild("TPS")
@@ -107,30 +102,29 @@ getgenv().BallSkin = {
         local s = skins[name]
         if not s then warn("BallSkin: '" .. name .. "' doesn't exist") return end
 
-        if ball and ball.Parent then
+        if not _active and ball and ball.Parent then
             save_state(ball)
-            hide(ball)
         end
 
         _active = true
 
-        smesh.MeshId    = s.mesh
-        smesh.TextureId = s.text
-        smesh.Scale     = Vector3.new(1, 1, 1) * (s.scale or 1)
+        if ball and ball.Parent then hide(ball) end
+
+        smesh.MeshId      = s.mesh
+        smesh.TextureId   = s.text
+        smesh.Scale       = Vector3.new(1, 1, 1) * (s.scale or 1)
         skin.Transparency = 0
     end,
 
     reset = function()
         _active = false
-
         disconnect_all()
 
         if ball and ball.Parent then
-            if saved.transparency ~= nil then
-                ball.Transparency = saved.transparency
-            end
-            for v, t in pairs(saved.decals) do
-                if v and v.Parent then v.Transparency = t end
+            ball.Transparency = saved.transparency ~= nil and saved.transparency or 0
+            for _, v in ipairs(get_decals(ball)) do
+                local t = saved.decals[v.Name]
+                v.Transparency = t ~= nil and t or 0
             end
         end
 
