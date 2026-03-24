@@ -22,6 +22,7 @@ local _snap_trans = nil
 
 local function get_decals(b)
     local decals = {}
+    if not b or not b.Parent then return decals end
     for _, v in ipairs(b:GetChildren()) do
         if v:IsA("Decal") then
             decals[#decals + 1] = v
@@ -30,20 +31,29 @@ local function get_decals(b)
     return decals
 end
 
+local function disconnect_all()
+    if _decal_conn then _decal_conn:Disconnect(); _decal_conn = nil end
+    if _trans_conn  then _trans_conn:Disconnect();  _trans_conn  = nil end
+end
+
 local function hide(b)
+    if not b or not b.Parent then return end
+
     b.Transparency = 1
 
     for _, v in ipairs(get_decals(b)) do
         v.Transparency = 1
     end
 
-    if _decal_conn then _decal_conn:Disconnect() end
+    disconnect_all()
+
     _decal_conn = b.ChildAdded:Connect(function(v)
+        if not b.Parent then disconnect_all() return end
         if v:IsA("Decal") then v.Transparency = 1 end
     end)
 
-    if _trans_conn then _trans_conn:Disconnect() end
     _trans_conn = b:GetPropertyChangedSignal("Transparency"):Connect(function()
+        if not b.Parent then disconnect_all() return end
         if b.Transparency ~= 1 then b.Transparency = 1 end
     end)
 end
@@ -73,15 +83,14 @@ end)
 getgenv().BallSkin = {
     set = function(name)
         local s = skins[name]
-        if not s then warn("BallSkin: '" .. name .. "'It doesn't exist") return end
+        if not s then warn("BallSkin: '" .. name .. "' It doesn't exist") return end
         skin.MeshId       = s.mesh
         skin.TextureID    = s.text
         skin.Transparency = 0
     end,
 
     reset = function()
-        if _decal_conn then _decal_conn:Disconnect(); _decal_conn = nil end
-        if _trans_conn  then _trans_conn:Disconnect(); _trans_conn  = nil end
+        disconnect_all()
 
         skin.Transparency = 1
         skin.MeshId       = ""
