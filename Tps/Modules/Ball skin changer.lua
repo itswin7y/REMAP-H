@@ -2,17 +2,22 @@ local rs  = cloneref(game:GetService("RunService"))
 local sys = workspace:WaitForChild("TPSSystem")
 
 local skins = {
-    maxwell = { mesh = "rbxassetid://12303996327", text = "rbxassetid://12303996609" },
-    foxy    = { mesh = "rbxassetid://511716418",   text = "rbxassetid://511716563"   },
-    reimu   = { mesh = "rbxassetid://13889657422", text = "rbxassetid://13889657608" },
+    maxwell = { mesh = "rbxassetid://12303996327", text = "rbxassetid://12303996609", scale = Vector3.new(3,3,3) },
+    foxy    = { mesh = "rbxassetid://511716418",   text = "rbxassetid://511716563",   scale = Vector3.new(3,3,3) },
+    reimu   = { mesh = "rbxassetid://13889657422", text = "rbxassetid://13889657608", scale = Vector3.new(3,3,3) },
 }
 
-local skin = Instance.new("MeshPart")
+local skin = Instance.new("Part")
 skin.CanCollide   = false
 skin.Anchored     = true
 skin.Massless     = true
 skin.Transparency = 1
+skin.Size         = Vector3.new(2,2,2)
 skin.Parent       = workspace
+
+local smesh       = Instance.new("SpecialMesh")
+smesh.MeshType    = Enum.MeshType.FileMesh
+smesh.Parent      = skin
 
 local ball        = nil
 local conn        = nil
@@ -24,9 +29,7 @@ local function get_decals(b)
     local decals = {}
     if not b or not b.Parent then return decals end
     for _, v in ipairs(b:GetChildren()) do
-        if v:IsA("Decal") then
-            decals[#decals + 1] = v
-        end
+        if v:IsA("Decal") then decals[#decals + 1] = v end
     end
     return decals
 end
@@ -38,12 +41,8 @@ end
 
 local function hide(b)
     if not b or not b.Parent then return end
-
     b.Transparency = 1
-
-    for _, v in ipairs(get_decals(b)) do
-        v.Transparency = 1
-    end
+    for _, v in ipairs(get_decals(b)) do v.Transparency = 1 end
 
     disconnect_all()
 
@@ -77,30 +76,28 @@ end)
 conn = rs.RenderStepped:Connect(function()
     if not ball or not ball.Parent then return end
     skin.CFrame = ball.CFrame
-    if skin.Size ~= ball.Size then skin.Size = ball.Size end
+    skin.Size   = ball.Size
 end)
 
 getgenv().BallSkin = {
     set = function(name)
         local s = skins[name]
-        if not s then warn("BallSkin: '" .. name .. "' It doesn't exist") return end
-        skin.MeshId       = s.mesh
-        skin.TextureID    = s.text
+        if not s then warn("BallSkin: '" .. name .. "' Idoesn't exist") return end
+        smesh.MeshId    = s.mesh
+        smesh.TextureId = s.text
+        smesh.Scale     = s.scale or Vector3.new(1,1,1)
         skin.Transparency = 0
     end,
 
     reset = function()
         disconnect_all()
-
         skin.Transparency = 1
-        skin.MeshId       = ""
-        skin.TextureID    = ""
+        smesh.MeshId    = ""
+        smesh.TextureId = ""
 
         if ball and ball.Parent then
             ball.Transparency = _snap_trans or 0
-            for _, v in ipairs(get_decals(ball)) do
-                v.Transparency = 0
-            end
+            for _, v in ipairs(get_decals(ball)) do v.Transparency = 0 end
         end
 
         _snap_trans = nil
