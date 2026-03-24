@@ -2,9 +2,9 @@ local rs  = cloneref(game:GetService("RunService"))
 local sys = workspace:WaitForChild("TPSSystem")
 
 local skins = {
-    maxwell = { mesh = "rbxassetid://12303996327", text = "rbxassetid://12303996609", scale = Vector3.new(3,3,3) },
-    foxy    = { mesh = "rbxassetid://511716418",   text = "rbxassetid://511716563",   scale = Vector3.new(3,3,3) },
-    reimu   = { mesh = "rbxassetid://13889657422", text = "rbxassetid://13889657608", scale = Vector3.new(3,3,3) },
+    maxwell = { mesh = "rbxassetid://12303996327", text = "rbxassetid://12303996609", scale = 1 },
+    foxy    = { mesh = "rbxassetid://511716418",   text = "rbxassetid://511716563",   scale = 1 },
+    reimu   = { mesh = "rbxassetid://13889657422", text = "rbxassetid://13889657608", scale = 1 },
 }
 
 local skin = Instance.new("Part")
@@ -17,6 +17,7 @@ skin.Parent       = workspace
 
 local smesh       = Instance.new("SpecialMesh")
 smesh.MeshType    = Enum.MeshType.FileMesh
+smesh.Scale       = Vector3.new(1,1,1)
 smesh.Parent      = skin
 
 local ball        = nil
@@ -63,7 +64,11 @@ local function swap(b)
     hide(b)
 end
 
-local existing = sys:FindFirstChild("TPS")
+local function find_ball()
+    return sys:FindFirstChild("TPS")
+end
+
+local existing = find_ball()
 if existing then swap(existing) end
 
 sys.ChildAdded:Connect(function(v)
@@ -74,23 +79,32 @@ sys.ChildAdded:Connect(function(v)
 end)
 
 conn = rs.RenderStepped:Connect(function()
-    if not ball or not ball.Parent then return end
+    if not ball or not ball.Parent then
+        local new = find_ball()
+        if new then swap(new) end
+        return
+    end
+
     skin.CFrame = ball.CFrame
-    skin.Size   = ball.Size
 end)
 
 getgenv().BallSkin = {
     set = function(name)
         local s = skins[name]
-        if not s then warn("BallSkin: '" .. name .. "' Idoesn't exist") return end
+        if not s then warn("BallSkin: '" .. name .. "' doesn't exist") return end
+
         smesh.MeshId    = s.mesh
         smesh.TextureId = s.text
-        smesh.Scale     = s.scale or Vector3.new(1,1,1)
+
+        -- escala estável (não explode)
+        smesh.Scale = Vector3.new(1,1,1) * (s.scale or 1)
+
         skin.Transparency = 0
     end,
 
     reset = function()
         disconnect_all()
+
         skin.Transparency = 1
         smesh.MeshId    = ""
         smesh.TextureId = ""
