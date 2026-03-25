@@ -1,4 +1,3 @@
-
 local Players = cloneref(game:GetService("Players"))
 local lp = Players.LocalPlayer
 
@@ -51,3 +50,45 @@ game:GetService("StarterGui"):SetCore("SendNotification", {
     Text  = "bypass working",
     Duration = 5,
 })
+
+
+--[[ Bypass solara/xeno(If you need)
+
+local lp = game:GetService("Players").LocalPlayer
+
+local function RHP()
+    local sys = workspace:FindFirstChild("FE") and workspace.FE:FindFirstChild("System")
+    if not sys then return nil end
+
+    local rem = sys:FindFirstChild("KeepYourHeadUp")
+    if rem then
+        rem:Destroy()
+        local FH = Instance.new("RemoteEvent")
+        FH.Name = "KeepYourHeadUp"
+        FH.Parent = sys
+        return true
+    end
+
+    return false
+end
+
+if not RHP() then
+    lp:Kick("anticheat updated, Wait for the fix. --->REMAP-H<--")
+    return
+end
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+        local sys = workspace:FindFirstChild("FE") and workspace.FE:FindFirstChild("System")
+        if not sys then
+            lp:Kick("anticheat updated, Wait for the fix. --->REMAP-H<--")
+            return
+        end
+        local rem = sys:FindFirstChild("KeepYourHeadUp")
+        if rem then
+            RHP()
+        end
+    end
+end)
+--]]
