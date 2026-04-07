@@ -19,11 +19,11 @@ setreadonly(sys_mt, false)
 local ri = sys_mt.__index
 local rn = sys_mt.__namecall
 sys_mt.__index = newcclosure(function(s, k)
-    if k == "KeepYourHeadUp" then return fake end
+    if k == "HelloWorld" then return fake end
     return ri(s, k)
 end)
 sys_mt.__namecall = newcclosure(function(s, ...)
-    if getnamecallmethod() == "FindFirstChild" and select(1, ...) == "KeepYourHeadUp" then return fake end
+    if getnamecallmethod() == "FindFirstChild" and select(1, ...) == "HelloWorld" then return fake end
     return rn(s, ...)
 end)
 setreadonly(sys_mt, true)
@@ -60,11 +60,11 @@ local function RHP()
     local sys = workspace:FindFirstChild("FE") and workspace.FE:FindFirstChild("System")
     if not sys then return nil end
 
-    local rem = sys:FindFirstChild("KeepYourHeadUp")
+    local rem = sys:FindFirstChild("HelloWorld")
     if rem then
         rem:Destroy()
         local FH = Instance.new("RemoteEvent")
-        FH.Name = "KeepYourHeadUp"
+        FH.Name = "HelloWorld"
         FH.Parent = sys
         return true
     end
@@ -85,7 +85,7 @@ task.spawn(function()
             lp:Kick("anticheat updated, Wait for the fix. --->REMAP-H<--")
             return
         end
-        local rem = sys:FindFirstChild("KeepYourHeadUp")
+        local rem = sys:FindFirstChild("HelloWorld")
         if rem then
             RHP()
         end
