@@ -374,23 +374,10 @@ local Window = Seraph:Window("REMAP-H") do
                     }):Button({
                         Title    = "Reset avatar",
                         Callback = function()
-                            if getgenv().AvatarStolen then
-                                getgenv().AvatarStolen.destroy()
-                            end
-                            task.spawn(function()
-                                local char = lp.Character
-                                if not char then return end
-                                local hum = char:FindFirstChildOfClass("Humanoid")
-                                if not hum then return end
-                                local ok, desc = pcall(function()
-                                    local uid = plrs:GetUserIdFromNameAsync(lp.Name)
-                                    return plrs:GetHumanoidDescriptionFromUserId(uid)
-                                end)
-                                if ok and desc then
-                                    hum:ApplyDescriptionClientServer(desc)
-                                end
-                            end)
-                        end,
+    if getgenv().AvatarStolen then
+        getgenv().AvatarStolen.reset()
+    end
+end,
                     })
                 end
             end
