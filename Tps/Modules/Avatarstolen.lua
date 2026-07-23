@@ -1,9 +1,9 @@
 local plrs = cloneref(game:GetService("Players"))
-local insert = cloneref(game:GetService("InsertService"))
-local lp = plrs.LocalPlayer
+local lp   = plrs.LocalPlayer
 
-local _username = nil
+local _username  = nil
 local _char_conn = nil
+local _self_desc = nil
 
 local function uri(id)
     return "rbxassetid://" .. tostring(id)
@@ -11,7 +11,7 @@ end
 
 local function clean(char)
     for _, v in ipairs(char:GetChildren()) do
-        if v:IsA("Accessory") or v:IsA("Shirt") or v:IsA("Pants")
+        if v:IsA("Accessory") or v:IsA("Hat") or v:IsA("Shirt") or v:IsA("Pants")
         or v:IsA("BodyColors") or v:IsA("ShirtGraphic") or v:IsA("CharacterMesh") then
             v:Destroy()
         end
@@ -38,12 +38,28 @@ local function weld_acc(char, hum, acc)
     end
     local a = h:FindFirstChildOfClass("Attachment")
     local b = a and char:FindFirstChild(a.Name, true)
+    if not b then
+        local at = ""
+        pcall(function() at = tostring(acc.AccessoryType) end)
+        local pref = {"HatAttachment", "HairAttachment", "FaceFrontAttachment", "FaceCenterAttachment",
+            "NeckAttachment", "BodyFrontAttachment", "BodyBackAttachment", "WaistCenterAttachment"}
+        if at:find("Hair") then pref = {"HairAttachment", "HatAttachment", "FaceCenterAttachment"}
+        elseif at:find("Face") then pref = {"FaceFrontAttachment", "FaceCenterAttachment", "HatAttachment"}
+        elseif at:find("Back") then pref = {"BodyBackAttachment", "WaistBackAttachment"}
+        elseif at:find("Waist") then pref = {"WaistCenterAttachment", "WaistFrontAttachment"}
+        elseif at:find("Neck") then pref = {"NeckAttachment"} end
+        for _, n in ipairs(pref) do
+            b = char:FindFirstChild(n, true)
+            if b then break end
+        end
+    end
     local w = Instance.new("Weld")
+    w.Name = "AccessoryWeld"
     if b and b.Parent and b.Parent:IsA("BasePart") then
         w.Part0 = b.Parent
         w.Part1 = h
         w.C0 = b.CFrame
-        w.C1 = a.CFrame
+        w.C1 = a and a.CFrame or CFrame.new()
     else
         local hd = char:FindFirstChild("Head")
         if hd then
@@ -70,7 +86,7 @@ local function head_from_model(m, char)
         local mesh = Instance.new("SpecialMesh")
         mesh.MeshType = Enum.MeshType.FileMesh
         mesh.MeshId = s.MeshId
-        mesh.TextureId = s.TextureId
+        mesh.TextureId = s.TextureID or ""
         mesh.Name = "__dyn_head"
         mesh.Parent = d
     end
@@ -108,27 +124,32 @@ local function objs(id)
         for _, v in ipairs(game:GetObjects(uri(id))) do out[#out+1] = v end
     end)
     if #out == 0 then
-        pcall(function() out[1] = insert:LoadLocalAsset(uri(id)) end)
+        pcall(function() out[1] = game:GetService("InsertService"):LoadLocalAsset(uri(id)) end)
     end
     return out
 end
 
-local function apply(char)
-    if not char or not _username then return end
-
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then
-        task.delay(0.5, function() apply(char) end)
-        return
+local function extract(root)
+    if root:IsA("Accessory") or root:IsA("Hat") then return {root} end
+    local list = {}
+    for _, v in ipairs(root:GetChildren()) do
+        if v:IsA("Accessory") or v:IsA("Hat") then list[#list+1] = v end
     end
+    if #list == 0 then
+        for _, v in ipairs(root:GetDescendants()) do
+            if v:IsA("Accessory") or v:IsA("Hat") then list[#list+1] = v end
+        end
+    end
+    return list
+end
 
+local function apply_desc(char, desc)
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    local m
+    pcall(function() m = plrs:CreateHumanoidModelFromDescription(desc, hum.RigType) end)
     clean(char)
-
-    local ok, err = pcall(function()
-        local uid = plrs:GetUserIdFromNameAsync(_username)
-        local d = plrs:GetHumanoidDescriptionFromUserId(uid)
-        local m = plrs:CreateHumanoidModelFromDescription(d, hum.RigType)
-
+    if m then
         local hd = char:FindFirstChild("Head")
         for _, v in ipairs(m:GetChildren()) do
             if v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic")
@@ -139,65 +160,80 @@ local function apply(char)
                 if f then f:Clone().Parent = hd end
             end
         end
-
         head_from_model(m, char)
+    end
+    local seen = {}
+    local function attach(acc)
+        if seen[acc.Name] then return end
+        seen[acc.Name] = true
+        weld_acc(char, hum, acc:Clone())
+    end
+    if m then
+        for _, v in ipairs(extract(m)) do attach(v) end
+    end
+    for _, id in ipairs(acc_ids(desc)) do
+        for _, o in ipairs(objs(id)) do
+            for _, acc in ipairs(extract(o)) do attach(acc) end
+        end
+    end
+    if m then pcall(function() m:Destroy() end) end
+    if not char:FindFirstChildOfClass("Shirt") and desc.Shirt and desc.Shirt > 0 then
+        local s = Instance.new("Shirt")
+        s.ShirtTemplate = uri(desc.Shirt)
+        s.Parent = char
+    end
+    if not char:FindFirstChildOfClass("Pants") and desc.Pants and desc.Pants > 0 then
+        local p = Instance.new("Pants")
+        p.PantsTemplate = uri(desc.Pants)
+        p.Parent = char
+    end
+    if not char:FindFirstChildOfClass("BodyColors") then
+        local bc = Instance.new("BodyColors")
+        bc.HeadColor3 = desc.HeadColor
+        bc.TorsoColor3 = desc.TorsoColor
+        bc.LeftArmColor3 = desc.LeftArmColor
+        bc.RightArmColor3 = desc.RightArmColor
+        bc.LeftLegColor3 = desc.LeftLegColor
+        bc.RightLegColor3 = desc.RightLegColor
+        bc.Parent = char
+    end
+    local hd = char:FindFirstChild("Head")
+    if hd and not hd:FindFirstChildOfClass("Decal") and not hd:FindFirstChild("__dyn_head") then
+        local f = Instance.new("Decal")
+        f.Name = "face"
+        f.Face = Enum.NormalId.Front
+        f.Texture = (desc.Face and desc.Face > 0) and uri(desc.Face) or "rbxasset://textures/face.png"
+        f.Parent = hd
+    end
+end
 
-        local seen = {}
-        for _, v in ipairs(m:GetChildren()) do
-            if (v:IsA("Accessory") or v:IsA("Hat")) and not seen[v.Name] then
-                seen[v.Name] = true
-                weld_acc(char, hum, v:Clone())
-            end
-        end
-
-        for _, id in ipairs(acc_ids(d)) do
-            for _, o in ipairs(objs(id)) do
-                local accs = o:IsA("Accessory") and { o } or {}
-                if not o:IsA("Accessory") then
-                    for _, x in ipairs(o:GetDescendants()) do
-                        if x:IsA("Accessory") then accs[#accs+1] = x end
-                    end
-                end
-                for _, acc in ipairs(accs) do
-                    if not seen[acc.Name] then
-                        seen[acc.Name] = true
-                        weld_acc(char, hum, acc)
-                    end
-                end
-            end
-        end
-
-        m:Destroy()
-
-        if not char:FindFirstChildOfClass("Shirt") and d.Shirt and d.Shirt > 0 then
-            local s = Instance.new("Shirt")
-            s.ShirtTemplate = uri(d.Shirt)
-            s.Parent = char
-        end
-        if not char:FindFirstChildOfClass("Pants") and d.Pants and d.Pants > 0 then
-            local p = Instance.new("Pants")
-            p.PantsTemplate = uri(d.Pants)
-            p.Parent = char
-        end
-        if not char:FindFirstChildOfClass("BodyColors") then
-            local bc = Instance.new("BodyColors")
-            bc.HeadColor3 = d.HeadColor
-            bc.TorsoColor3 = d.TorsoColor
-            bc.LeftArmColor3 = d.LeftArmColor
-            bc.RightArmColor3 = d.RightArmColor
-            bc.LeftLegColor3 = d.LeftLegColor
-            bc.RightLegColor3 = d.RightLegColor
-            bc.Parent = char
-        end
-        if hd and not hd:FindFirstChildOfClass("Decal") and not hd:FindFirstChild("__dyn_head") then
-            local f = Instance.new("Decal")
-            f.Name = "face"
-            f.Face = Enum.NormalId.Front
-            f.Texture = (d.Face and d.Face > 0) and uri(d.Face) or "rbxasset://textures/face.png"
-            f.Parent = hd
-        end
+local function save_self()
+    if _self_desc then return end
+    local char = lp.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        local ok, d = pcall(function() return hum:GetAppliedDescription() end)
+        if ok and d then _self_desc = d:Clone() return end
+    end
+    pcall(function()
+        local uid = plrs:GetUserIdFromNameAsync(lp.Name)
+        _self_desc = plrs:GetHumanoidDescriptionFromUserId(uid)
     end)
+end
 
+local function apply(char)
+    if not char or not _username then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then
+        task.delay(0.5, function() apply(char) end)
+        return
+    end
+    save_self()
+    local ok, err = pcall(function()
+        local uid = plrs:GetUserIdFromNameAsync(_username)
+        local desc = plrs:GetHumanoidDescriptionFromUserId(uid)
+        apply_desc(char, desc)
+    end)
     if not ok then
         warn("AvatarStolen:", err)
         task.delay(1, function() apply(char) end)
@@ -207,16 +243,24 @@ end
 getgenv().AvatarStolen = {
     steal = function(username)
         _username = username
-
         if _char_conn then _char_conn:Disconnect() end
         _char_conn = lp.CharacterAdded:Connect(function(char)
             char:WaitForChild("Humanoid")
             task.wait(0.2)
             apply(char)
         end)
-
         local char = lp.Character
         if char then apply(char) end
+    end,
+
+    reset = function()
+        save_self()
+        if not _self_desc then return end
+        _username = nil
+        if _char_conn then _char_conn:Disconnect(); _char_conn = nil end
+        local char = lp.Character
+        if not char then return end
+        pcall(function() apply_desc(char, _self_desc) end)
     end,
 
     destroy = function()
